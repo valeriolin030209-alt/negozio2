@@ -7,7 +7,8 @@ Questa cartella contiene un sito statico con due pagine separate:
 
 ## Funzioni clienti
 
-- catalogo con colonna verticale delle categorie;
+- su telefono le categorie si aprono da icona in alto a sinistra con pannello laterale;
+- su telefono i prodotti vengono mostrati due per riga;
 - categoria speciale `Offerte e sconti`, evidenziata con colore diverso, che raccoglie automaticamente tutti i prodotti in offerta;
 - i prodotti in offerta restano visibili anche nella loro categoria originale;
 - schede prodotto con prezzo vecchio barrato, prezzo scontato, percentuale di sconto e risparmio indicativo;
@@ -20,11 +21,11 @@ Questa cartella contiene un sito statico con due pagine separate:
 - prezzo diverso per ogni variante del prodotto;
 - prezzo offerta diverso per ogni variante del prodotto;
 - scelta quantita e aggiunta al carrello;
-- icona in alto a destra per vedere carrello e ordini inviati;
+- icona ordini/carrello sempre in alto a destra;
 - checkout con nome, telefono, tipo consegna/indirizzo e metodo di pagamento obbligatori;
-- scelta destinazione: casa/ufficio, mercato martedi, mercato mercoledi, mercato giovedi, appartamento/residenza;
-- campo indirizzo obbligatorio quando viene scelto casa/ufficio o appartamento/residenza;
-- spesa minima obbligatoria, modificabile dall'admin;
+- scelta destinazione: casa/ufficio, mercato martedi, mercato mercoledi, mercato giovedi;
+- campo indirizzo obbligatorio solo quando viene scelto casa/ufficio;
+- spesa minima obbligatoria diversa per ogni destinazione, modificabile dall'admin;
 - metodi di pagamento: contanti alla consegna, carta alla consegna, altro / da concordare.
 
 ## Funzioni admin
@@ -35,7 +36,7 @@ Questa cartella contiene un sito statico con due pagine separate:
 - aggiunta di varianti prodotto con nome opzione, prezzo normale e prezzo offerta specifico;
 - possibilita di etichettare un prodotto come `Prodotto in offerta`;
 - visualizzazione automatica dei prodotti in offerta nella categoria speciale `Offerte e sconti`;
-- modifica della spesa minima necessaria per inviare l'ordine;
+- modifica della spesa minima generale e della spesa minima specifica per ogni destinazione;
 - modifica della casella informativa sopra il catalogo clienti;
 - modifica del messaggio in primo piano nella barra alta, a sinistra del pulsante di accesso admin;
 - gestione ordini ricevuti e cambio stato;
@@ -64,7 +65,7 @@ Il prezzo offerta deve essere piu basso del prezzo normale. Il cliente vedra pre
 
 1. Apri `index.html` per vedere la pagina clienti.
 2. Apri `admin.html` per gestire il sito.
-3. Nell'area admin inserisci il codice richiesto.
+3. Nell'area admin inserisci il codice comunicato separatamente.
 
 Il codice admin non viene mostrato nelle pagine del sito.
 

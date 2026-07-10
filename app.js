@@ -2,7 +2,7 @@ const STORAGE_KEY = "casaMarketStoreV3";
 const LEGACY_STORAGE_KEYS = ["casaMarketStoreV2", "casaMarketStoreV1"];
 const CART_KEY = "casaMarketCartV2";
 const LEGACY_CART_KEYS = ["casaMarketCartV1"];
-const SESSION_KEY = "casaMarketAdminLogged";
+const SESSION_KEY = "casaMarketAdminLoggedV2";
 const CUSTOMER_ID_KEY = "casaMarketCustomerId";
 const DEFAULT_MIN_ORDER_TOTAL = 15;
 const DISCOUNT_CATEGORY_ID = "discounted-products";
@@ -22,9 +22,9 @@ const ADDRESS_TYPES = [
   "Casa / ufficio",
   "Mercato martedi",
   "Mercato mercoledi",
-  "Mercato giovedi",
-  "Appartamento / residenza"
+  "Mercato giovedi"
 ];
+const DEFAULT_DESTINATION_MIN_ORDER_TOTALS = Object.fromEntries(ADDRESS_TYPES.map(type => [type, DEFAULT_MIN_ORDER_TOTAL]));
 
 const sampleImages = {
   electronics: "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#173f35"/><stop offset="1" stop-color="#b84a26"/></linearGradient></defs><rect width="800" height="600" rx="44" fill="#f6f3ed"/><rect x="180" y="150" width="440" height="260" rx="36" fill="url(#g)" opacity=".9"/><circle cx="295" cy="282" r="58" fill="#fffaf2"/><rect x="390" y="236" width="160" height="96" rx="20" fill="#fffaf2" opacity=".9"/><text x="400" y="505" font-family="Arial" font-size="52" font-weight="700" fill="#173f35">Elettronica</text></svg>`),
@@ -46,7 +46,7 @@ function uid(prefix = "id") {
 }
 
 function adminCode() {
-  return String.fromCharCode(86, 97, 108, 101, 114, 105, 111, 48, 50, 48, 57);
+  return String.fromCharCode(76, 105, 110, 115, 111, 102, 105, 97, 50, 48, 49, 49);
 }
 
 function normalizeAdminCode(value) {
@@ -73,6 +73,7 @@ function defaultStore() {
       subtitle: "Catalogo digitale del negozio",
       publicUrl: "",
       minOrderTotal: DEFAULT_MIN_ORDER_TOTAL,
+      destinationMinOrderTotals: { ...DEFAULT_DESTINATION_MIN_ORDER_TOTALS },
       catalogNotice: "Ordine minimo 15 EUR. Scegli i prodotti, seleziona le opzioni disponibili e invia l'ordine con telefono, indirizzo e metodo di pagamento.",
       topMessage: "Nuovi arrivi e offerte disponibili in negozio."
     },
@@ -192,12 +193,20 @@ function migrateStore(parsed) {
   if (!parsed || typeof parsed !== "object") return fresh;
 
   const settings = parsed.settings && typeof parsed.settings === "object" ? parsed.settings : {};
+  const fallbackMinOrderTotal = parseOptionalPrice(settings.minOrderTotal) ?? parseOptionalPrice(settings.minimumOrderTotal) ?? fresh.settings.minOrderTotal;
+  const rawDestinationMinimums = settings.destinationMinOrderTotals || settings.destinationMinimums || {};
+  const destinationMinOrderTotals = Object.fromEntries(ADDRESS_TYPES.map(type => [
+    type,
+    parseOptionalPrice(rawDestinationMinimums[type]) ?? fallbackMinOrderTotal
+  ]));
+
   const migrated = {
     settings: {
       shopName: settings.shopName || fresh.settings.shopName,
       subtitle: settings.subtitle || fresh.settings.subtitle,
       publicUrl: settings.publicUrl || "",
-      minOrderTotal: parseOptionalPrice(settings.minOrderTotal) ?? parseOptionalPrice(settings.minimumOrderTotal) ?? fresh.settings.minOrderTotal,
+      minOrderTotal: fallbackMinOrderTotal,
+      destinationMinOrderTotals,
       catalogNotice: settings.catalogNotice !== undefined ? String(settings.catalogNotice || "") : fresh.settings.catalogNotice,
       topMessage: settings.topMessage !== undefined ? String(settings.topMessage || "") : fresh.settings.topMessage
     },
@@ -310,6 +319,9 @@ const els = {
   shopSubtitle: byId("shopSubtitle"),
   topMessage: byId("topMessage"),
   catalogNotice: byId("catalogNotice"),
+  openCategories: byId("openCategories"),
+  closeCategories: byId("closeCategories"),
+  categoryBackdrop: byId("categoryBackdrop"),
   categoryList: byId("categoryList"),
   productGrid: byId("productGrid"),
   emptyCatalog: byId("emptyCatalog"),
@@ -554,8 +566,42 @@ function selectedPrice(product, variantId) {
   return effectivePriceForSelection(product, variantId);
 }
 
-function getMinOrderTotal() {
+function destinationMinimums() {
+  const configured = store?.settings?.destinationMinOrderTotals || {};
+  return Object.fromEntries(ADDRESS_TYPES.map(type => [
+    type,
+    parseOptionalPrice(configured[type]) ?? parseOptionalPrice(store?.settings?.minOrderTotal) ?? DEFAULT_MIN_ORDER_TOTAL
+  ]));
+}
+
+function getMinOrderTotal(addressType = "") {
+  const minima = destinationMinimums();
+  if (addressType && ADDRESS_TYPES.includes(addressType)) {
+    return minima[addressType];
+  }
   return parseOptionalPrice(store?.settings?.minOrderTotal) ?? DEFAULT_MIN_ORDER_TOTAL;
+}
+
+function renderDestinationMinimumInputs() {
+  const inputs = document.querySelectorAll("[data-min-destination]");
+  if (!inputs.length) return;
+  const minima = destinationMinimums();
+  inputs.forEach(input => {
+    const type = input.dataset.minDestination;
+    input.value = minima[type] ?? getMinOrderTotal();
+  });
+}
+
+function collectDestinationMinimums() {
+  const inputs = document.querySelectorAll("[data-min-destination]");
+  const fallback = parseOptionalPrice(els.settingMinOrderTotal?.value) ?? DEFAULT_MIN_ORDER_TOTAL;
+  const values = { ...DEFAULT_DESTINATION_MIN_ORDER_TOTALS };
+  inputs.forEach(input => {
+    const type = input.dataset.minDestination;
+    if (!type || !ADDRESS_TYPES.includes(type)) return;
+    values[type] = parseOptionalPrice(input.value) ?? fallback;
+  });
+  return values;
 }
 
 function sortCatalogProducts(products) {
@@ -639,6 +685,7 @@ function renderShopSettings() {
   if (els.settingShopName) els.settingShopName.value = store.settings.shopName || "";
   if (els.settingSubtitle) els.settingSubtitle.value = store.settings.subtitle || "";
   if (els.settingMinOrderTotal) els.settingMinOrderTotal.value = getMinOrderTotal();
+  renderDestinationMinimumInputs();
   if (els.settingCatalogNotice) els.settingCatalogNotice.value = store.settings.catalogNotice || "";
   if (els.settingTopMessage) els.settingTopMessage.value = store.settings.topMessage || "";
   if (els.qrUrlInput) els.qrUrlInput.value = store.settings.publicUrl || "";
@@ -663,6 +710,7 @@ function renderCategories() {
       activeCategoryId = button.dataset.category;
       renderCategories();
       renderCatalog();
+      closeCategoryMenu();
     });
   });
 }
@@ -966,21 +1014,27 @@ function removeCartItem(key) {
 
 function updateMinimumOrderNotice(total, itemCount) {
   if (!els.minOrderNotice || !els.submitOrderButton) return;
-  const minOrderTotal = getMinOrderTotal();
+  const selectedType = els.customerAddressType?.value || "";
+  const minOrderTotal = getMinOrderTotal(selectedType);
   const missing = Math.max(0, minOrderTotal - total);
-  els.submitOrderButton.disabled = itemCount === 0 || total < minOrderTotal;
-  els.minOrderNotice.classList.toggle("ok", itemCount > 0 && total >= minOrderTotal);
+  const hasDestination = ADDRESS_TYPES.includes(selectedType);
+  els.submitOrderButton.disabled = itemCount === 0 || !hasDestination || total < minOrderTotal;
+  els.minOrderNotice.classList.toggle("ok", itemCount > 0 && hasDestination && total >= minOrderTotal);
   if (!itemCount) {
-    els.minOrderNotice.textContent = `Ordine minimo: ${formatMoney(minOrderTotal)}.`;
+    els.minOrderNotice.textContent = hasDestination
+      ? `Ordine minimo per ${selectedType}: ${formatMoney(minOrderTotal)}.`
+      : "Seleziona la destinazione per vedere la spesa minima richiesta.";
+  } else if (!hasDestination) {
+    els.minOrderNotice.textContent = "Seleziona la destinazione per calcolare la spesa minima dell'ordine.";
   } else if (missing > 0) {
-    els.minOrderNotice.textContent = `Ordine minimo ${formatMoney(minOrderTotal)}. Mancano ${formatMoney(missing)} per inviare l'ordine.`;
+    els.minOrderNotice.textContent = `Ordine minimo per ${selectedType}: ${formatMoney(minOrderTotal)}. Mancano ${formatMoney(missing)} per inviare l'ordine.`;
   } else {
-    els.minOrderNotice.textContent = "Ordine minimo raggiunto: puoi inviare l'ordine.";
+    els.minOrderNotice.textContent = `Ordine minimo per ${selectedType} raggiunto: puoi inviare l'ordine.`;
   }
 }
 
 function requiresAddressDetail(addressType) {
-  return addressType === "Casa / ufficio" || addressType === "Appartamento / residenza";
+  return addressType === "Casa / ufficio";
 }
 
 function updateAddressFields() {
@@ -989,9 +1043,7 @@ function updateAddressFields() {
   const required = requiresAddressDetail(selectedType);
   els.customerAddressWrap.classList.toggle("hidden", !required);
   els.customerAddress.required = required;
-  els.customerAddress.placeholder = selectedType === "Appartamento / residenza"
-    ? "Nome residenza, scala, interno, indirizzo"
-    : "Via, numero civico, citta";
+  els.customerAddress.placeholder = "Via, numero civico, citta";
   if (!required) els.customerAddress.value = "";
 }
 
@@ -1059,13 +1111,6 @@ function submitOrder(event) {
   }
 
   const total = validItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const minOrderTotal = getMinOrderTotal();
-  if (total < minOrderTotal) {
-    showToast(`Spesa minima: ${formatMoney(minOrderTotal)}. Aggiungi altri prodotti.`);
-    updateMinimumOrderNotice(total, validItems.length);
-    return;
-  }
-
   const customerName = els.customerName?.value.trim() || "";
   const customerContact = els.customerContact?.value.trim() || "";
   const customerAddressType = els.customerAddressType?.value.trim() || "";
@@ -1073,7 +1118,7 @@ function submitOrder(event) {
   const paymentMethod = els.customerPayment?.value.trim() || "";
 
   if (!customerName || !customerContact || !customerAddressType || !paymentMethod) {
-    showToast("Compila nome, telefono, tipo consegna e metodo di pagamento");
+    showToast("Compila nome, telefono, destinazione e metodo di pagamento");
     return;
   }
 
@@ -1083,7 +1128,14 @@ function submitOrder(event) {
   }
 
   if (requiresAddressDetail(customerAddressType) && !customerAddress) {
-    showToast("Scrivi l'indirizzo o i dettagli della consegna");
+    showToast("Scrivi l'indirizzo della casa o dell'ufficio");
+    return;
+  }
+
+  const minOrderTotal = getMinOrderTotal(customerAddressType);
+  if (total < minOrderTotal) {
+    showToast(`Spesa minima per ${customerAddressType}: ${formatMoney(minOrderTotal)}. Aggiungi altri prodotti.`);
+    updateMinimumOrderNotice(total, validItems.length);
     return;
   }
 
@@ -1123,6 +1175,18 @@ function submitOrder(event) {
   renderMyOrders();
   renderAdminOrders();
   showToast("Ordine inviato. Puoi seguirlo in I miei ordini.");
+}
+
+function openCategoryMenu() {
+  document.body.classList.add("category-menu-open");
+  if (els.categoryBackdrop) els.categoryBackdrop.classList.remove("hidden");
+  if (els.openCategories) els.openCategories.setAttribute("aria-expanded", "true");
+}
+
+function closeCategoryMenu() {
+  document.body.classList.remove("category-menu-open");
+  if (els.categoryBackdrop) els.categoryBackdrop.classList.add("hidden");
+  if (els.openCategories) els.openCategories.setAttribute("aria-expanded", "false");
 }
 
 function openDrawer() {
@@ -1177,6 +1241,7 @@ function renderAdminSettings() {
   if (els.settingShopName) els.settingShopName.value = store.settings.shopName || "";
   if (els.settingSubtitle) els.settingSubtitle.value = store.settings.subtitle || "";
   if (els.settingMinOrderTotal) els.settingMinOrderTotal.value = getMinOrderTotal();
+  renderDestinationMinimumInputs();
   if (els.settingCatalogNotice) els.settingCatalogNotice.value = store.settings.catalogNotice || "";
   if (els.settingTopMessage) els.settingTopMessage.value = store.settings.topMessage || "";
 }
@@ -1528,6 +1593,7 @@ function saveSettings(event) {
   store.settings.subtitle = els.settingSubtitle?.value.trim() || "Catalogo digitale del negozio";
   const minOrderTotal = parseOptionalPrice(els.settingMinOrderTotal?.value);
   store.settings.minOrderTotal = minOrderTotal ?? DEFAULT_MIN_ORDER_TOTAL;
+  store.settings.destinationMinOrderTotals = collectDestinationMinimums();
   store.settings.catalogNotice = els.settingCatalogNotice?.value.trim() || "";
   store.settings.topMessage = els.settingTopMessage?.value.trim() || "";
   saveStore();
@@ -1594,11 +1660,17 @@ function bindEvents() {
     sortMode = event.target.value;
     renderCatalog();
   });
+  on(els.openCategories, "click", openCategoryMenu);
+  on(els.closeCategories, "click", closeCategoryMenu);
+  on(els.categoryBackdrop, "click", closeCategoryMenu);
   on(els.openOrders, "click", openDrawer);
   on(els.closeOrders, "click", closeDrawer);
   on(els.drawerBackdrop, "click", closeDrawer);
   on(els.checkoutForm, "submit", submitOrder);
-  on(els.customerAddressType, "change", updateAddressFields);
+  on(els.customerAddressType, "change", () => {
+    updateAddressFields();
+    renderCart();
+  });
 
   on(els.closeProductModal, "click", closeProductModal);
   on(els.productModal, "click", event => {
@@ -1631,6 +1703,7 @@ function bindEvents() {
   window.addEventListener("keydown", event => {
     if (event.key === "Escape") {
       closeDrawer();
+      closeCategoryMenu();
       closeProductModal();
       closeAdmin();
     }

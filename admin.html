@@ -13,6 +13,7 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <header class="topbar admin-topbar">
+    <button id="openCategories" class="category-toggle" type="button" aria-label="Apri categorie" aria-expanded="false">&#9776;</button>
     <div class="brand-block">
       <div class="logo-mark">CM</div>
       <div>
@@ -31,9 +32,14 @@
     </div>
   </header>
 
+  <div id="categoryBackdrop" class="category-backdrop hidden"></div>
+
   <main class="layout">
     <aside class="category-panel" aria-label="Categorie prodotti">
-      <div class="panel-title">Categorie</div>
+      <div class="category-panel-header">
+        <div class="panel-title">Categorie</div>
+        <button id="closeCategories" class="icon-button category-close" type="button" aria-label="Chiudi categorie">x</button>
+      </div>
       <nav id="categoryList" class="category-list"></nav>
     </aside>
 
@@ -105,11 +111,10 @@
             <option value="Mercato martedi">Mercato martedi</option>
             <option value="Mercato mercoledi">Mercato mercoledi</option>
             <option value="Mercato giovedi">Mercato giovedi</option>
-            <option value="Appartamento / residenza">Appartamento / residenza</option>
           </select>
         </label>
         <label id="customerAddressWrap" class="hidden">
-          Indirizzo o dettagli
+          Indirizzo casa / ufficio
           <input id="customerAddress" type="text" placeholder="Via, numero civico, citta" autocomplete="street-address">
         </label>
         <label>
@@ -188,9 +193,33 @@
                 <input id="settingSubtitle" type="text" required>
               </label>
               <label>
-                Spesa minima per inviare ordine
+                Spesa minima generale/predefinita
                 <input id="settingMinOrderTotal" type="number" step="0.01" min="0" placeholder="Es. 15.00" required>
               </label>
+              <div class="destination-minimums full-span">
+                <div>
+                  <strong>Spesa minima per destinazione</strong>
+                  <p class="muted small">Imposta il minimo d'ordine richiesto per ogni tipo di consegna. Il cliente potra inviare l'ordine solo se raggiunge il minimo della destinazione scelta.</p>
+                </div>
+                <div class="destination-min-grid">
+                  <label>
+                    Casa / ufficio
+                    <input type="number" step="0.01" min="0" data-min-destination="Casa / ufficio" placeholder="Es. 15.00" required>
+                  </label>
+                  <label>
+                    Mercato martedi
+                    <input type="number" step="0.01" min="0" data-min-destination="Mercato martedi" placeholder="Es. 15.00" required>
+                  </label>
+                  <label>
+                    Mercato mercoledi
+                    <input type="number" step="0.01" min="0" data-min-destination="Mercato mercoledi" placeholder="Es. 15.00" required>
+                  </label>
+                  <label>
+                    Mercato giovedi
+                    <input type="number" step="0.01" min="0" data-min-destination="Mercato giovedi" placeholder="Es. 15.00" required>
+                  </label>
+                </div>
+              </div>
               <label class="full-span">
                 Casella informativa sopra il catalogo clienti
                 <textarea id="settingCatalogNotice" rows="3" placeholder="Es. Ordine minimo 15 EUR. Consegna disponibile in giornata..."></textarea>

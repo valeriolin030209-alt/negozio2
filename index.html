@@ -12,6 +12,7 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <header class="topbar">
+    <button id="openCategories" class="category-toggle" type="button" aria-label="Apri categorie" aria-expanded="false">&#9776;</button>
     <div class="brand-block">
       <div class="logo-mark">CM</div>
       <div>
@@ -29,9 +30,14 @@
     </div>
   </header>
 
+  <div id="categoryBackdrop" class="category-backdrop hidden"></div>
+
   <main class="layout">
     <aside class="category-panel" aria-label="Categorie prodotti">
-      <div class="panel-title">Categorie</div>
+      <div class="category-panel-header">
+        <div class="panel-title">Categorie</div>
+        <button id="closeCategories" class="icon-button category-close" type="button" aria-label="Chiudi categorie">x</button>
+      </div>
       <nav id="categoryList" class="category-list"></nav>
     </aside>
 
@@ -100,11 +106,10 @@
             <option value="Mercato martedi">Mercato martedi</option>
             <option value="Mercato mercoledi">Mercato mercoledi</option>
             <option value="Mercato giovedi">Mercato giovedi</option>
-            <option value="Appartamento / residenza">Appartamento / residenza</option>
           </select>
         </label>
         <label id="customerAddressWrap" class="hidden">
-          Indirizzo o dettagli
+          Indirizzo casa / ufficio
           <input id="customerAddress" type="text" placeholder="Via, numero civico, citta" autocomplete="street-address">
         </label>
         <label>
